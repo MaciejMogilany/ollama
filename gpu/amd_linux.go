@@ -51,6 +51,7 @@ const (
 	GFX1152 = "gfx1152" //RDNA3+
 	//	GFX942 = "gfx942" //MI300X, MI300A CDNA3
 	GFX940 = "gfx940" //MI300A CDNA3
+	GFX90C = "gfx90c" //Radeon Vega 7 Ryzen 5600G
 
 )
 
@@ -59,11 +60,11 @@ var (
 	ROCmLibGlobs          = []string{"libhipblas.so.2*", "rocblas"} // TODO - probably include more coverage of files here...
 	RocmStandardLocations = []string{"/opt/rocm/lib", "/usr/lib64"}
 	// Used to validate if supported APU for GTT memory allocation
-	APUvalidForGTT = []string{GFX1103, GFX1035, GFX1033, GFX1036, GFX1151, GFX1152, GFX1037, GFX940}
+	APUvalidForGTT = []string{GFX1103, GFX1035, GFX1033, GFX1036, GFX1151, GFX1152, GFX1037, GFX940, GFX90C}
 )
 
 // Check for valid APU an linux kenel version to use GTT memory insted VRAM memory
-func checkGTTmemoryOnAPU(gfx string) (bool, error) {
+func GTTmemoryOnAPU(gfx string) (bool, error) {
 	// Check kernel version
 	cmd := exec.Command("uname", "-r")
 	output, err := cmd.Output()
@@ -316,7 +317,7 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 				continue
 			}
 
-			GTTisValid, err := checkGTTmemoryOnAPU(fmt.Sprintf("gfx%d%x%x", major, minor, patch))
+			AMD_APU_GTT, err := GTTmemoryOnAPU(fmt.Sprintf("gfx%d%x%x", major, minor, patch))
 			if err != nil {
 				slog.Debug("Error:", err)
 				continue
@@ -325,7 +326,7 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 			// Found the matching DRM directory
 			slog.Debug("matched", "amdgpu", match, "drm", devDir)
 			totalFile := filepath.Join(devDir, DRMTotalMemoryFile)
-			if GTTisValid {
+			if AMD_APU_GTT {
 				slog.Debug("AMD APU valid to use GTT memory")
 				totalFile = filepath.Join(devDir, DRMTotalMemoryFileGTT)
 			}
@@ -340,7 +341,7 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 				break
 			}
 			usedFile = filepath.Join(devDir, DRMUsedMemoryFile)
-			if GTTisValid {
+			if AMD_APU_GTT {
 				slog.Debug("AMD APU valid to use GTT memory")
 				usedFile = filepath.Join(devDir, DRMUsedMemoryFileGTT)
 			}
@@ -379,6 +380,7 @@ func AMDGetGPUInfo() []RocmGPUInfo {
 				DriverMinor:   driverMinor,
 			},
 			usedFilepath: usedFile,
+			AMD_APU_GTT:  AMD_APU_GTT, //AMD APU use GTT for its memory
 		}
 
 		// If the user wants to filter to a subset of devices, filter out if we aren't a match

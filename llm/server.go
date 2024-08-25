@@ -247,10 +247,12 @@ func NewLlamaServer(gpus gpu.GpuInfoList, model string, ggml *GGML, adapters, pr
 	// Windows CUDA should not use mmap for best performance
 	// Linux  with a model larger than free space, mmap leads to thrashing
 	// For CPU loads we want the memory to be allocated, not FS cache
+	// For AMD APU don't use mmap to avoid duplicate memory allocation in RAM and graphic memory GTT (GTT use RAM)
 	if (runtime.GOOS == "windows" && gpus[0].Library == "cuda" && opts.UseMMap == nil) ||
 		(runtime.GOOS == "linux" && systemFreeMemory < estimate.TotalSize && opts.UseMMap == nil) ||
 		(gpus[0].Library == "cpu" && opts.UseMMap == nil) ||
-		(opts.UseMMap != nil && !*opts.UseMMap) {
+		(opts.UseMMap != nil && !*opts.UseMMap) ||
+		(runtime.GOOS == "linux" && gpus[0].Library == "rocm" && opts.UseMMap == nil && gpus[0].(gpu.RocmGPUInfo).AMD_APU_GTT) {
 		params = append(params, "--no-mmap")
 	}
 

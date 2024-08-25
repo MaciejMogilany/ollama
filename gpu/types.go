@@ -62,6 +62,7 @@ type RocmGPUInfo struct {
 	GpuInfo
 	usedFilepath string //nolint:unused,nolintlint
 	index        int    //nolint:unused,nolintlint
+	AMD_APU_GTT  bool   //check AMD APU to set -no-mmap to avoid trashing RAM, GTT use RAM
 }
 type RocmGPUInfoList []RocmGPUInfo
 
